@@ -56,5 +56,5 @@ main = do
         args <- getArgs
         instr <- readFile (head args)
         print $ let ilist = map (\s -> read s :: Int) (words instr)
-                    initState = ([[]], ilist, 0) in
+                    initState = ([], ilist, 0) in
                 run $ initState
