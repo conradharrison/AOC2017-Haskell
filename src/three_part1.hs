@@ -10,12 +10,15 @@ outputFromState :: PState -> POutput
 outputFromState (x, y, index) | index < target = Nothing
                               | otherwise = Just (abs x + abs y)
 
--- Update state
+-- Update state - 
+--      move to next location
+--      increment value
 nextState :: PState -> PState
 nextState (x, y, index) = (newx, newy, newindex)
                           where (newx, newy) = getNextXY x y
                                 newindex = index + 1
 
+-- Do the spiral walk
 getNextXY :: Int -> Int -> (Int, Int)
 getNextXY 0 0 = (1, 0)
 getNextXY x y |  x > y  && -y < x   = (x, y+1)
