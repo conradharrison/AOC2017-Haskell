@@ -38,33 +38,35 @@ treeSum :: Node -> Int
 treeSum (Node n w []) = w
 treeSum (Node n w s) = foldl (+) w (map treeSum s)
 
--- Take a list of (Eq) class objects, and a function to preprocess the objects, 
--- find the odd (extrema) object
-extreme :: (Eq b) => [a] -> (a -> b) -> a
-extreme [] = error "Cannot find extremum on empty list"
-extreme [x] = x
-extreme l = maximum l -- place holder
-
--- Bad version of extreme
-extremum :: [Node] -> Node
-extremum [x] = Empty -- maybe extremum
-extremum [x,y] = y -- maybe extremum
-extremum (x:y:z:[]) | sx==sy && sx/=sz = z
-                    | sx/=sy && sx/=sz = x
-                    | sx/=sy && sx==sz = y
-                    | otherwise        = Empty
-                    where [sx, sy, sz] = map treeSum [x, y, z]
-extremum (x:y:z:rest) | sx/=sy && sx/=sz = x
-                      | otherwise        = extremum (y:z:rest)
-                      where [sx, sy, sz] = map treeSum [x, y, z]
-
--- Return node whose stack is unbalanced
-traceOddNodeOut :: Node -> Node
+-- Return culprit node with delta
+traceOddNodeOut :: Node -> (Node, Int)
 traceOddNodeOut (Node n w []) = Node n w []
-traceOddNodeOut n | o == Empty = error "We shouldnt hit this"
-                  | extremum (stack o) == Empty = n
+traceOddNodeOut n | isBalanced (stack n) = error "We shouldnt hit this"
+                  | isBalanced (stack o) = (o, getDelta (map treeSum (stack n)))
                   | otherwise  = traceOddNodeOut o
-                  where o = extremum $ stack n
+                  where o = (min or max based on sign of getDelta) $ stack n
+
+isBalanced :: [Node] -> Bool
+isBalanced ns = let l = map treeSum ns in 
+                (minumum l == maximum l)
+
+average :: [Int] -> Int
+average xs = (sum xs) `div` (length xs)
+
+getDelta :: [Int] -> Int
+getDelta l = (maximum l) - (minimum l)
+
+delta :: [Int] -> Int
+delta [] = error "Cannot do delta on empty set"
+delta [x] = 0
+delta [x, y] = x-y
+delta (x:y:z:rest) | x<y && x<z =    x-y
+                   | x>y && x>z =  -(x-y)
+                   | y<x && y<z =    y-x
+                   | y>x && y>z =  -(y-x)
+                   | z<x && z<y =    z-x 
+                   | z>x && z>y =  -(z-x)
+                   | otherwise  = delta (y:z:rest)
 
 -- output = list of culplrit nodes: list of (node-weight, subTree-weight)
 run :: [Node] -> [(Int, Int)]
