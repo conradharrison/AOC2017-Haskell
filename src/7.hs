@@ -41,12 +41,22 @@ treeSum (Node n w s) = foldl (+) w (map treeSum s)
 -- Return culprit node with delta
 traceOddNodeOut :: Node -> (Node, Int)
 traceOddNodeOut (Node n w []) = Node n w []
-traceOddNodeOut n | isBalanced (stack n) = error "We shouldnt hit this"
-                  | isBalanced (stack o) = (o, getDelta (map treeSum (stack n)))
+traceOddNodeOut n | isAnyChildCulprit n = (o, getOddNodeDelta (map treeSum (stack n)))
                   | otherwise  = traceOddNodeOut o
-                  where o = (min or max based on sign of getDelta) $ stack n
+                  where o = getOddElem $ stack n
+
+getOddNode :: [Node] -> Node
+getOddNode l = filter (\x -> ((treeSum x) - (minimum (map treeSum l)) /= 0) l
+
+getOddNodeDelta :: [Node] -> Node
+getOddNodeDelta l = weight (head (filter (\x -> (x - minimum l) /= 0) l))
+
+-- Some child is a culprit if none of the grandchildren are culprits
+isAnyChildCulprit :: Node -> Bool
+isAnyChildCulprit n = foldl (&&) True (map (\x -> isBalanced (stack x)) (stack n)) 
 
 isBalanced :: [Node] -> Bool
+isBalanced [] = True
 isBalanced ns = let l = map treeSum ns in 
                 (minumum l == maximum l)
 
@@ -68,12 +78,9 @@ delta (x:y:z:rest) | x<y && x<z =    x-y
                    | z>x && z>y =  -(z-x)
                    | otherwise  = delta (y:z:rest)
 
--- output = list of culplrit nodes: list of (node-weight, subTree-weight)
-run :: [Node] -> [(Int, Int)]
-run nodes = let a = map weight $ unbalancedStack
-                b = map treeSum $ unbalancedStack
-                unbalancedStack = stack $ traceOddNodeOut $ buildTree nodes $ getRoot nodes in
-            zip a b
+-- output = culprit node, and the correction
+run :: [Node] -> (Node, Int)
+run nodes = traceOddNodeOut $ buildTree nodes $ getRoot nodes
 
 -- Takes one commandline argument: filename
 main :: IO()
