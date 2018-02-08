@@ -1,7 +1,11 @@
 import System.Environment ( getArgs )
 import Debug.Trace
 
-data Node = Node {name::String, weight::Int, stack::[Node]} | Empty deriving (Show, Eq)
+data Node = Node {name::String, weight::Int, stack::[Node]} | Empty deriving (Show)
+instance Eq Node where
+    s1 == s2 = (treeSum s1) == (treeSum s2)
+instance Ord Node where
+    s1 <= s2 = (treeSum s1) <= (treeSum s2)
 
 -- myWords delimiterString, inString -> [String]
 splitOn :: String -> String -> [String]
@@ -35,26 +39,37 @@ getNode ((Node n w s):xs) (Node rn rw rs) | rn == n = Node n w s
 
 -- Return weight of the node + node's stack
 treeSum :: Node -> Int
+treeSum Empty = 0        
 treeSum (Node n w []) = w
 treeSum (Node n w s) = foldl (+) w (map treeSum s)
 
+-- A unbalanced stack may be due to am Excess, Deficit or we may not know yet
+data Parity = Excess | Deficit | Dunno deriving (Eq)
+
 -- Return culprit node's weight with delta
-traceOddNodeOut :: Node -> (Int, Int)
-traceOddNodeOut (Node n w []) = (w, 0)
-traceOddNodeOut n | isAnyChildCulprit n = (weight o, getOddNodeDelta (map treeSum (stack n)))
-                  | otherwise  = traceOddNodeOut o
-                  where o = getOddNode $ stack n
+traceOddNodeOut :: Parity -> Node -> (Int, Int)
+traceOddNodeOut _ (Node n w []) = (w, 0)
+traceOddNodeOut p n | isAnyChildCulprit n = (weight o, getDelta op (map treeSum (stack n)))
+                    | otherwise  = traceOddNodeOut op o
+                    where (o, op) = outlier (stack n) p
+                          getDelta par list | par == Dunno = error "Tree has to be imbalanced"
+                                            | otherwise    = minimum list - maximum list
 
-getOddNode :: [Node] -> Node
-getOddNode l = head $ filter (\x -> ((treeSum x) - (minimum (map treeSum l)) /= 0)) l
-
-getOddNodeDelta :: [Int] -> Int
-getOddNodeDelta l = head $ filter (\x -> (x - minimum l) /= 0) l
+-- Generic helper to pick the unique outlier in a list
+-- Takes a Ord list, with a hint (Excess, Deficit, Dunno)
+outlier :: (Ord a) => [a] -> Parity -> (a, Parity)
+outlier [x] _ =  (x, Excess) -- Anything would do
+outlier l        (Excess)  = (maximum l, Excess)
+outlier l        (Deficit) = (minimum l, Excess)
+outlier [x, y]   (Dunno)   = (x, Excess) -- Anything will do
+outlier (x:y:xs) (Dunno)   | x `elem` (y:xs) = outlier ((y:xs)++[x]) Dunno
+                           | otherwise = (x, if (x>y) then Excess else Deficit)
 
 -- Some child is a culprit if none of the grandchildren are culprits
 isAnyChildCulprit :: Node -> Bool
 isAnyChildCulprit n = foldl (&&) True (map (\x -> isBalanced (stack x)) (stack n)) 
 
+-- There is no outlier in the stack (i.e., balanced)
 isBalanced :: [Node] -> Bool
 isBalanced [] = True
 isBalanced ns = let l = map treeSum ns in 
@@ -63,7 +78,7 @@ isBalanced ns = let l = map treeSum ns in
 -- output = culprit node, and the correction
 run :: [Node] -> Int
 run nodes = x + y
-            where (x, y) = traceOddNodeOut $ buildTree nodes $ getRoot nodes
+            where (x, y) = traceOddNodeOut Dunno $ buildTree nodes $ getRoot nodes
 
 -- Takes one commandline argument: filename
 main :: IO()
