@@ -38,18 +38,18 @@ treeSum :: Node -> Int
 treeSum (Node n w []) = w
 treeSum (Node n w s) = foldl (+) w (map treeSum s)
 
--- Return culprit node with delta
-traceOddNodeOut :: Node -> (Node, Int)
-traceOddNodeOut (Node n w []) = Node n w []
-traceOddNodeOut n | isAnyChildCulprit n = (o, getOddNodeDelta (map treeSum (stack n)))
+-- Return culprit node's weight with delta
+traceOddNodeOut :: Node -> (Int, Int)
+traceOddNodeOut (Node n w []) = (w, 0)
+traceOddNodeOut n | isAnyChildCulprit n = (weight o, getOddNodeDelta (map treeSum (stack n)))
                   | otherwise  = traceOddNodeOut o
-                  where o = getOddElem $ stack n
+                  where o = getOddNode $ stack n
 
 getOddNode :: [Node] -> Node
-getOddNode l = filter (\x -> ((treeSum x) - (minimum (map treeSum l)) /= 0) l
+getOddNode l = head $ filter (\x -> ((treeSum x) - (minimum (map treeSum l)) /= 0)) l
 
-getOddNodeDelta :: [Node] -> Node
-getOddNodeDelta l = weight (head (filter (\x -> (x - minimum l) /= 0) l))
+getOddNodeDelta :: [Int] -> Int
+getOddNodeDelta l = head $ filter (\x -> (x - minimum l) /= 0) l
 
 -- Some child is a culprit if none of the grandchildren are culprits
 isAnyChildCulprit :: Node -> Bool
@@ -58,29 +58,12 @@ isAnyChildCulprit n = foldl (&&) True (map (\x -> isBalanced (stack x)) (stack n
 isBalanced :: [Node] -> Bool
 isBalanced [] = True
 isBalanced ns = let l = map treeSum ns in 
-                (minumum l == maximum l)
-
-average :: [Int] -> Int
-average xs = (sum xs) `div` (length xs)
-
-getDelta :: [Int] -> Int
-getDelta l = (maximum l) - (minimum l)
-
-delta :: [Int] -> Int
-delta [] = error "Cannot do delta on empty set"
-delta [x] = 0
-delta [x, y] = x-y
-delta (x:y:z:rest) | x<y && x<z =    x-y
-                   | x>y && x>z =  -(x-y)
-                   | y<x && y<z =    y-x
-                   | y>x && y>z =  -(y-x)
-                   | z<x && z<y =    z-x 
-                   | z>x && z>y =  -(z-x)
-                   | otherwise  = delta (y:z:rest)
+                (minimum l == maximum l)
 
 -- output = culprit node, and the correction
-run :: [Node] -> (Node, Int)
-run nodes = traceOddNodeOut $ buildTree nodes $ getRoot nodes
+run :: [Node] -> Int
+run nodes = x + y
+            where (x, y) = traceOddNodeOut $ buildTree nodes $ getRoot nodes
 
 -- Takes one commandline argument: filename
 main :: IO()
