@@ -36,8 +36,8 @@ addSymbol str val = do
 execute :: Instruction -> Executor ()
 execute (Instruction reg op opval cond) = do
                                             r <- lookUp reg
-                                            cond <- checkCondition cond
-                                            case cond of
+                                            c <- checkCondition cond
+                                            case c of
                                                 True -> case op of
                                                             INC -> addSymbol reg (r + opval)
                                                             DEC -> addSymbol reg (r - opval)
@@ -47,12 +47,12 @@ checkCondition :: Condition -> Executor Bool
 checkCondition (Condition creg cop cval) = do
                                             r <- lookUp creg
                                             case cop of
-                                                EQ -> return (r == cval)                                            
-                                                NE -> return (r /= cval)                                            
-                                                LE -> return (r <= cval)                                            
-                                                GE -> return (r >= cval)                                            
-                                                LT -> return (r  < cval)                                            
-                                                GT -> return (r  > cval)                                            
+                                                EQ -> return (r == cval)
+                                                NE -> return (r /= cval)
+                                                LE -> return (r <= cval)
+                                                GE -> return (r >= cval)
+                                                LT -> return (r  < cval)
+                                                GT -> return (r  > cval)
 
 -- Parse file text to an Instruction
 parse :: String -> Executor Instruction

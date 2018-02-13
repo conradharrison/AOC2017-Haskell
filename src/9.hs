@@ -15,35 +15,53 @@ pop (Stack (x:xs)) = (Just x, Stack xs)
 peek :: Stack a -> (Maybe a, Stack a)
 peek (Stack []) = (Nothing, Stack [])
 peek (Stack (x:xs)) = (Just x, Stack (x:xs))
-
 -- End Helpers
 
-data Thing s = Group s | Garbage s
+data Token = SGRP | EGRP | SGARB | EGARB | IGNORENEXT | COMMA deriving (Eq, Enum, Show)
+type ParserState = State (Stack Token, Int)
 
-data Token = SGRP | EGRP | SGARB | EGARB | IGNORENEXT | COMMA | OTHERS deriving (Eq, Enum, Show)
+upLevel :: ParserState 
+upLevel = do
+            (s, l) <- get
+            return (ns, l-1) where (Just ns) = pop s
 
-parse :: Stack Token -> [Char] -> Stack Token
-parse s []       = s
-parse s (x:rest) | (top == Just IGNORENEXT       ) = parse (let (_, ns) = pop s in ns) rest
+downLevel :: ParserState 
+downLevel = do
+                (s, l) <- get
+                return (push s SGRP, l+1)
+
+keepLevel :: ParserState
+keepLevel = do
+                (s, l) <- get
+                return (ns, l) where (Just ns) = pop s
+
+pushToken :: Token -> ParserState
+pushToken t = do
+                (s, l) <- get
+                return (push s t, l)
+
+parse :: [Char] -> Int -> (ParserState, Int)
+parse [] a       = (return (), a) 
+parse (x:rest) a | (top == Just IGNORENEXT       ) = parse (let (_, ns) = pop s in ns) rest
                  | (top == Just SGARB && x == '>') = parse (push s EGARB) rest 
                  | (top == Just EGARB && x == ',') = parse (push s COMMA) rest 
-                 | (top == Just EGARB && x == '}') = parse (push s EGRP) rest 
+                 | (top == Just EGARB && x == '}') = (downLevel, a)
                  | (top == Just SGRP  && x == '<') = parse (push s SGARB) rest 
-                 | (top == Just SGRP  && x == '{') = parse (push s SGRP) rest 
-                 | (top == Just SGRP  && x == '}') = parse (push s EGRP) rest 
-                 | (top == Just EGRP  && x == '}') = parse (push s EGRP) rest 
-                 | (top == Just EGRP  && x == ',') = parse (push s COMMA) rest 
-                 | (top == Just COMMA && x == '{') = parse (push s SGRP) rest 
-                 | (top == Just COMMA && x == '<') = parse (push s SGARB) rest 
-                 | (top == Nothing    && x == '{') = parse (push s SGRP) rest 
+                 | (top == Just SGRP  && x == '{') = (upLevel, a)
+                 | (top == Just SGRP  && x == '}') = (downLevel, a)
+                 | (top == Just EGRP  && x == '}') = (downLevel, a) 
+                 | (top == Just EGRP  && x == ',') = (pushToken COMMA, a)
+                 | (top == Just COMMA && x == '{') = (upLevel, a)
+                 | (top == Just COMMA && x == '<') = (pushToken SGARB, a) 
+                 | (top == Nothing    && x == '{') = (upLevel, a+1)
                  | (                     x == '!') = parse (push s IGNORENEXT) rest 
                  | otherwise                       = parse s rest 
                  where (top, _) = peek s
 
-getScore :: Stack Token -> Stack Int -> (Stack Token, Stack Int, Int)
-getScore (Stack (x:xs)) accum | x == SGRP = getScore xs (push accum (top+1))
-                              | x == EGRP = (Stack xs, (pop accum), top)
-getScore
+getScore :: Stack Token -> Int -> Int
+getScore (Stack (x:xs)) currentLevel accum | x == SGRP = getScore (Stack (x:xs)) currentLevel+1 accum
+                                           | x == EGRP = (Stack xs, (pop accum), top)
+getScore (Stack []) c a = a
 
 run :: [Char] -> Stack Token
 run [] = Stack []
