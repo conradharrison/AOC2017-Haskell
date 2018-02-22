@@ -1,4 +1,3 @@
-import Prelude hiding (EQ, GT, LT)
 import System.Environment (getArgs)
 
 -- Helper class
