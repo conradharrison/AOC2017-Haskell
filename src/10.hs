@@ -1,4 +1,7 @@
 import System.Environment (getArgs)
+import Data.Char (ord)
+import Data.Bits
+import Text.Printf
 import Debug.Trace
 
 -- splitOn delimiterString, inString -> [String]
@@ -25,27 +28,36 @@ runAlgo_nowrap :: (Show a) => Int -> Int -> [a] -> [a]
 runAlgo_nowrap x c l = (take c l) ++ rl ++ (drop (c+x) l)
                        where rl = reverse $ fromTo c (c+x-1) l
 
+chain = [0..255]
+chainLength = 256
 
 -- list of lenghts -> current position -> skip size -> old chain -> new chain
 twist :: (Show a) => [Int] -> Int -> Int -> [a] -> [a]
 twist []     _ _ old = old
 twist (x:xs) c s old = twist xs nextc nexts new
                        where nexts = s+1
-                             nextc = (c + x + s) `mod` chainLength
+                             nextc = (c + x + s) `mod` (length old)
                              new = runAlgo x c old
 
--- constant inputs
-chain = [0..255]
-chainLength = length chain
+sparseHash :: [Int] -> [Int]
+sparseHash [] = []
+sparseHash l = [foldl (xor) 0 (take 16 l)] ++ (sparseHash (drop 16 l))
 
-run :: [Int] -> Int
-run l = foldl (*) 1 $ take 2 (twist l 0 0 chain)
+showAsHex :: [Int] -> String
+showAsHex l = foldl (\x y -> (printf "%s%02x" x y)) "" l
+
+run :: [Int] -> String
+run l = showAsHex $ sparseHash $ twist lengths 0 0 chain
+                                 where lengths = foldl (++) [] (replicate 64 l)
+--Part 1
+--run :: [Int] -> Int
+--run l = foldl (*) 1 $ take 2 (twist l 0 0 chain)
 
 -- Takes one commandline argument: filename
 main :: IO()
 main = do
         args <- getArgs
         inStr <- readFile (head args)
-        print $ run $ map (\x -> (read x :: Int)) (splitOn ", " inStr)
+        --print $ run1 $ map (\x -> (read x :: Int)) (splitOn ", " inStr) -- Part 1
+        print $ run $ (map ord (head $ lines $ inStr)) ++ [17,31,73,47,23]
 
--- TODO: create a genric circular list
